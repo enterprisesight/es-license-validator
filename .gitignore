@@ -1,5 +1,5 @@
 # Binaries
-validator
+/validator
 *.exe
 *.dll
 *.so
