@@ -29,6 +29,7 @@ type License struct {
 	TierName        string            `json:"tier_name"`
 	ClusterID       string            `json:"cluster_id"`
 	ClusterName     string            `json:"cluster_name"`
+	Namespace       string            `json:"namespace"`
 	LicensedNodes   int               `json:"licensed_nodes"`
 	MaxNodes        int               `json:"max_nodes,omitempty"`
 	NodeSelector    map[string]string `json:"node_selector"`
@@ -56,6 +57,9 @@ type ValidationResult struct {
 	NodeCount        int
 	LicensedNodes    int
 	NodeCountValid   bool
+	NamespaceValid   bool
+	ActualNamespace  string
+	LicenseNamespace string
 	SignatureValid   bool
 	ExpiryValid      bool
 	ValidationTime   time.Time
@@ -89,10 +93,11 @@ func NewValidator(publicKeyPEM string) (*Validator, error) {
 }
 
 // Validate validates a license JWT and returns the validation result
-func (v *Validator) Validate(licenseJWT string, actualNodeCount int) *ValidationResult {
+func (v *Validator) Validate(licenseJWT string, actualNodeCount int, actualNamespace string) *ValidationResult {
 	result := &ValidationResult{
-		ValidationTime: time.Now(),
-		NodeCount:      actualNodeCount,
+		ValidationTime:  time.Now(),
+		NodeCount:       actualNodeCount,
+		ActualNamespace: actualNamespace,
 	}
 
 	// Parse and validate JWT
@@ -131,6 +136,7 @@ func (v *Validator) Validate(licenseJWT string, actualNodeCount int) *Validation
 	result.License = license
 	result.ExpiresAt = license.ExpiresAt
 	result.LicensedNodes = license.LicensedNodes
+	result.LicenseNamespace = license.Namespace
 
 	// Check expiration
 	now := time.Now()
@@ -144,8 +150,17 @@ func (v *Validator) Validate(licenseJWT string, actualNodeCount int) *Validation
 	// Check node count
 	result.NodeCountValid = actualNodeCount <= license.LicensedNodes
 
-	// Overall validity
-	result.Valid = result.SignatureValid && (result.ExpiryValid || result.IsInGracePeriod) && result.NodeCountValid
+	// Check namespace match
+	result.NamespaceValid = actualNamespace == license.Namespace
+
+	// Overall validity: signature must be valid, not expired (or in grace period),
+	// node count must be valid, AND namespace must match
+	result.Valid = result.SignatureValid && (result.ExpiryValid || result.IsInGracePeriod) && result.NodeCountValid && result.NamespaceValid
+
+	if !result.NamespaceValid {
+		result.Error = fmt.Errorf("namespace mismatch: license is for namespace '%s' but validator is running in '%s'", license.Namespace, actualNamespace)
+		result.Valid = false
+	}
 
 	return result
 }
@@ -198,6 +213,9 @@ func parseLicense(claims *jwt.MapClaims) (*License, error) {
 	}
 	if clusterName, ok := (*claims)["cluster_name"].(string); ok {
 		license.ClusterName = clusterName
+	}
+	if namespace, ok := (*claims)["namespace"].(string); ok {
+		license.Namespace = namespace
 	}
 	if licensedNodes, ok := (*claims)["licensed_nodes"].(float64); ok {
 		license.LicensedNodes = int(licensedNodes)

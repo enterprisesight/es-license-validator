@@ -189,8 +189,8 @@ func (s *ValidatorService) runValidation(ctx context.Context) {
 		nodeCount = 0
 	}
 
-	// Validate license
-	result := s.validator.Validate(string(licenseJWT), nodeCount)
+	// Validate license (including namespace binding check)
+	result := s.validator.Validate(string(licenseJWT), nodeCount, s.cfg.LicenseSecretNamespace)
 	s.currentResult = result
 
 	// Log result
@@ -266,15 +266,18 @@ func (s *ValidatorService) statusHandler(w http.ResponseWriter, r *http.Request)
 	}
 
 	response := map[string]interface{}{
-		"valid":             s.currentResult.Valid,
-		"validation_time":   s.currentResult.ValidationTime.Format(time.RFC3339),
-		"node_count":        s.currentResult.NodeCount,
-		"licensed_nodes":    s.currentResult.LicensedNodes,
-		"days_until_expiry": s.currentResult.DaysUntilExpiry,
-		"in_grace_period":   s.currentResult.IsInGracePeriod,
-		"signature_valid":   s.currentResult.SignatureValid,
-		"expiry_valid":      s.currentResult.ExpiryValid,
-		"node_count_valid":  s.currentResult.NodeCountValid,
+		"valid":              s.currentResult.Valid,
+		"validation_time":    s.currentResult.ValidationTime.Format(time.RFC3339),
+		"node_count":         s.currentResult.NodeCount,
+		"licensed_nodes":     s.currentResult.LicensedNodes,
+		"days_until_expiry":  s.currentResult.DaysUntilExpiry,
+		"in_grace_period":    s.currentResult.IsInGracePeriod,
+		"signature_valid":    s.currentResult.SignatureValid,
+		"expiry_valid":       s.currentResult.ExpiryValid,
+		"node_count_valid":   s.currentResult.NodeCountValid,
+		"namespace_valid":    s.currentResult.NamespaceValid,
+		"actual_namespace":   s.currentResult.ActualNamespace,
+		"license_namespace":  s.currentResult.LicenseNamespace,
 	}
 
 	if s.currentResult.License != nil {
@@ -285,6 +288,7 @@ func (s *ValidatorService) statusHandler(w http.ResponseWriter, r *http.Request)
 			"product_name":  s.currentResult.License.ProductName,
 			"tier_code":     s.currentResult.License.TierCode,
 			"cluster_id":    s.currentResult.License.ClusterID,
+			"namespace":     s.currentResult.License.Namespace,
 			"expires_at":    s.currentResult.License.ExpiresAt.Format(time.RFC3339),
 		}
 	}
