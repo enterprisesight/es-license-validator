@@ -1,0 +1,98 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: es-license-validator
+  namespace: default
+  labels:
+    app: es-license-validator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: es-license-validator
+  template:
+    metadata:
+      labels:
+        app: es-license-validator
+    spec:
+      serviceAccountName: es-license-validator
+      containers:
+      - name: validator
+        image: gcr.io/es-license-prod/es-license-validator:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080
+          name: http
+          protocol: TCP
+        env:
+        - name: LICENSE_SECRET_NAME
+          value: "es-license"
+        - name: LICENSE_SECRET_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: LICENSE_SECRET_KEY
+          value: "license.jwt"
+        - name: NODE_LABEL_KEY
+          value: "es-products.io/licensed"
+        - name: NODE_LABEL_VALUE
+          value: "true"
+        - name: LICENSE_SERVER_URL
+          value: "http://35.224.53.94"
+        - name: PHONE_HOME_ENABLED
+          value: "true"
+        - name: PHONE_HOME_INTERVAL
+          value: "24h"
+        - name: VALIDATION_INTERVAL
+          value: "5m"
+        - name: FAIL_OPEN
+          value: "true"
+        - name: HTTP_PORT
+          value: "8080"
+        - name: LOG_LEVEL
+          value: "info"
+        - name: LOG_FORMAT
+          value: "json"
+        # Public key for JWT verification (can be mounted from ConfigMap)
+        - name: ES_PUBLIC_KEY
+          valueFrom:
+            configMapKeyRef:
+              name: es-public-key
+              key: public.pem
+              optional: true
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 200m
+            memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: es-license-validator
+  namespace: default
+  labels:
+    app: es-license-validator
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 8080
+    protocol: TCP
+    name: http
+  selector:
+    app: es-license-validator
