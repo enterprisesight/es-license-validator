@@ -1,0 +1,106 @@
+# Default values for es-license-validator
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 1
+
+image:
+  repository: ghcr.io/enterprisesight/es-license-validator
+  pullPolicy: IfNotPresent
+  tag: "v1.0.0"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+rbac:
+  create: true
+
+podAnnotations: {}
+
+podSecurityContext: {}
+
+securityContext: {}
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8080
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 200m
+    memory: 256Mi
+
+livenessProbe:
+  httpGet:
+    path: /health
+    port: http
+  initialDelaySeconds: 10
+  periodSeconds: 30
+
+readinessProbe:
+  httpGet:
+    path: /ready
+    port: http
+  initialDelaySeconds: 5
+  periodSeconds: 10
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+# License configuration
+license:
+  # Name of the Kubernetes Secret containing the license JWT
+  secretName: es-license
+  # Namespace where the license Secret is located (defaults to release namespace)
+  secretNamespace: ""
+  # Key in the Secret containing the JWT token
+  secretKey: license.jwt
+
+# Node labeling configuration
+nodeLabeling:
+  # Label key to identify licensed nodes
+  key: es-products.io/licensed
+  # Label value to match
+  value: "true"
+
+# License server configuration
+licenseServer:
+  # URL of the ES License Server (e.g., http://35.224.53.94)
+  url: ""
+  # Enable phone home telemetry reporting
+  phoneHomeEnabled: true
+  # How often to phone home (e.g., 24h, 12h, 1h)
+  phoneHomeInterval: "24h"
+
+# Validation configuration
+validation:
+  # How often to validate the license (e.g., 5m, 10m, 1h)
+  interval: "5m"
+  # Fail-open: continue operations if license server is unreachable
+  failOpen: true
+
+# Logging configuration
+logging:
+  level: info
+  format: json
+
+# ES public key for JWT verification (optional)
+# If not provided, will use embedded public key
+publicKey:
+  # Create a ConfigMap with the public key
+  create: false
+  # Public key content (PEM format)
+  content: ""

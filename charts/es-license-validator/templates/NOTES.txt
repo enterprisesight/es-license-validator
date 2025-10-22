@@ -1,0 +1,42 @@
+Thank you for installing {{ .Chart.Name }}!
+
+Your release is named {{ .Release.Name }}.
+
+The ES License Validator has been deployed to namespace: {{ .Release.Namespace }}
+
+To check the status of your validator:
+
+  kubectl get pods -n {{ .Release.Namespace }} -l app.kubernetes.io/name={{ include "es-license-validator.name" . }}
+
+To view validator logs:
+
+  kubectl logs -n {{ .Release.Namespace }} -l app.kubernetes.io/name={{ include "es-license-validator.name" . }} -f
+
+To check license validation status:
+
+  kubectl port-forward -n {{ .Release.Namespace }} svc/{{ include "es-license-validator.fullname" . }} 8080:{{ .Values.service.port }}
+
+  Then visit: http://localhost:8080/status
+
+IMPORTANT: Next Steps
+======================
+
+1. Label your nodes for licensing:
+
+   kubectl label nodes <node-name> {{ .Values.nodeLabeling.key }}={{ .Values.nodeLabeling.value }}
+
+2. Create the license Secret (if not already created):
+
+   kubectl create secret generic {{ .Values.license.secretName }} \
+     --from-literal={{ .Values.license.secretKey }}="<your-license-jwt>" \
+     -n {{ .Release.Namespace }}
+
+{{- if not .Values.licenseServer.url }}
+
+3. Configure the license server URL:
+
+   helm upgrade {{ .Release.Name }} {{ .Chart.Name }} \
+     --set licenseServer.url=http://your-license-server-url
+{{- end }}
+
+For more information, visit: https://github.com/enterprisesight/es-license-validator

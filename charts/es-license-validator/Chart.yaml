@@ -1,0 +1,17 @@
+apiVersion: v2
+name: es-license-validator
+description: ES License Validator - Node-locked license validation for EnterpriseSight products
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+home: https://github.com/enterprisesight/es-license-validator
+sources:
+  - https://github.com/enterprisesight/es-license-validator
+maintainers:
+  - name: EnterpriseSight
+    email: support@enterprisesight.com
+keywords:
+  - licensing
+  - validation
+  - enterprisesight
+icon: https://avatars.githubusercontent.com/u/enterprisesight
